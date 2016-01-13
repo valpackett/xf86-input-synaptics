@@ -105,6 +105,8 @@ SynapticsCopyHwState(struct SynapticsHwState *dst,
     dst->z = src->z;
     dst->cumulative_dx = src->cumulative_dx;
     dst->cumulative_dy = src->cumulative_dy;
+    dst->guest_dx = src->guest_dx;
+    dst->guest_dy = src->guest_dy;
     dst->numFingers = src->numFingers;
     dst->fingerWidth = src->fingerWidth;
     dst->left = src->left & BTN_EMULATED_FLAG ? 0 : src->left;

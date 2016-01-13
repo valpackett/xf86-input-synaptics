@@ -1607,6 +1607,7 @@ timerFunc(OsTimerPtr timer, CARD32 now, pointer arg)
     input_lock();
 #endif
 
+    priv->hwState->guest_dx = priv->hwState->guest_dy = 0;
     priv->hwState->millis += now - priv->timer_time;
     SynapticsCopyHwState(hw, priv->hwState);
     SynapticsResetTouchHwState(hw, FALSE);
@@ -2272,6 +2273,9 @@ ComputeDeltas(SynapticsPrivate * priv, const struct SynapticsHwState *hw,
         dy = 0;
     }
 
+    dx += hw->guest_dx * 4;
+    dy += hw->guest_dy * 4;
+
     *dxP = dx;
     *dyP = dy;
 
@@ -2786,6 +2790,10 @@ update_hw_button_state(const InputInfoPtr pInfo, struct SynapticsHwState *hw,
     hw->up |= hw->multi[0];
     hw->down |= hw->multi[1];
 
+    hw->left |= hw->guest_left;
+    hw->middle |= hw->guest_mid;
+    hw->right |= hw->guest_right;
+
     /* 3rd button emulation */
     hw->middle |= HandleMidButtonEmulation(priv, hw, now, delay);
 
@@ -3125,6 +3133,7 @@ HandleState(InputInfoPtr pInfo, struct SynapticsHwState *hw, CARD32 now,
     dx = dy = 0;
 
     timeleft = ComputeDeltas(priv, hw, edge, &dx, &dy, inside_active_area);
+
     delay = MIN(delay, timeleft);
 
     buttons = ((hw->left ? 0x01 : 0) |
@@ -3138,7 +3147,7 @@ HandleState(InputInfoPtr pInfo, struct SynapticsHwState *hw, CARD32 now,
         buttons |= 1 << (priv->tap_button - 1);
 
     /* Post events */
-    if (finger >= FS_TOUCHED && (dx || dy) && !ignore_motion)
+    if ((hw->guest_dx || hw->guest_dy) || (finger >= FS_TOUCHED && (dx || dy) && !ignore_motion))
         xf86PostMotionEvent(pInfo->dev, 0, 0, 2, dx, dy);
 
     if (priv->mid_emu_state == MBE_LEFT_CLICK) {

@@ -101,6 +101,7 @@ struct PS2SynapticsHwInfo {
     unsigned int capabilities;  /* Capabilities */
     unsigned int ext_cap;       /* Extended Capabilities */
     unsigned int identity;      /* Identification */
+    Bool hasGuest;              /* Has a guest mouse */
 };
 
 Bool ps2_putbyte(int fd, byte b);

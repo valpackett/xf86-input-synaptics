@@ -152,6 +152,12 @@ PSMQueryHardware(InputInfoPtr pInfo)
 
     convert_hw_info(&psm_ident, synhw);
 
+    /* Check to see if the host mouse supports a guest */
+    synhw->hasGuest = FALSE;
+    if (psm_ident.capPassthrough) {
+        synhw->hasGuest = TRUE;
+    }
+
     ps2_print_ident(pInfo, synhw);
 
     return TRUE;
