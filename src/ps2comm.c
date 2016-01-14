@@ -641,16 +641,6 @@ PS2ReadHwStateProto(InputInfoPtr pInfo,
 
     newabs = SYN_MODEL_NEWABS(synhw);
 
-    /* Reset cumulative values if buttons were not previously pressed and no
-     * two-finger scrolling is ongoing, or no finger was previously present. */
-    if (((!hw->left && !hw->right && !hw->middle) &&
-        !(priv->vert_scroll_twofinger_on || priv->vert_scroll_twofinger_on)) ||
-        hw->z < para->finger_low) {
-        hw->cumulative_dx = last_dx = hw->x;
-        hw->cumulative_dy = last_dy = hw->y;
-        sync_cumulative = TRUE;
-    }
-
     if (!ps2_synaptics_get_packet(pInfo, synhw, proto_ops, comm))
         return FALSE;
 
@@ -684,6 +674,17 @@ PS2ReadHwStateProto(InputInfoPtr pInfo,
     hw->x = (((buf[3] & 0x10) << 8) | ((buf[1] & 0x0f) << 8) | buf[4]);
     hw->y = (((buf[3] & 0x20) << 7) | ((buf[1] & 0xf0) << 4) | buf[5]);
     hw->y = YMAX_NOMINAL + YMIN_NOMINAL - hw->y;
+
+
+    /* Reset cumulative values if buttons were not previously pressed and no
+     * two-finger scrolling is ongoing, or no finger was previously present. */
+    if (((!hw->left && !hw->right && !hw->middle) &&
+        !(priv->vert_scroll_twofinger_on || priv->horiz_scroll_twofinger_on)) ||
+        hw->z < para->finger_low) {
+        hw->cumulative_dx = last_dx = hw->x;
+        hw->cumulative_dy = last_dy = hw->y;
+        sync_cumulative = TRUE;
+    }
 
     hw->z = buf[2];
     w = (((buf[0] & 0x30) >> 2) |
