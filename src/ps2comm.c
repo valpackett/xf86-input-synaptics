@@ -679,80 +679,31 @@ PS2ReadHwStateProto(InputInfoPtr pInfo,
     for (i = 0; i < 8; i++)
         hw->multi[i] = FALSE;
 
-    if (newabs) {               /* newer protos... */
-        PS2DBG("using new protocols\n");
-        hw->x = (((buf[3] & 0x10) << 8) | ((buf[1] & 0x0f) << 8) | buf[4]);
-        hw->y = (((buf[3] & 0x20) << 7) | ((buf[1] & 0xf0) << 4) | buf[5]);
-        hw->y = YMAX_NOMINAL + YMIN_NOMINAL - hw->y;
+    hw->x = (((buf[3] & 0x10) << 8) | ((buf[1] & 0x0f) << 8) | buf[4]);
+    hw->y = (((buf[3] & 0x20) << 7) | ((buf[1] & 0xf0) << 4) | buf[5]);
+    hw->y = YMAX_NOMINAL + YMIN_NOMINAL - hw->y;
 
-        hw->z = buf[2];
-        w = (((buf[0] & 0x30) >> 2) |
-             ((buf[0] & 0x04) >> 1) | ((buf[3] & 0x04) >> 2));
+    hw->z = buf[2];
+    w = (((buf[0] & 0x30) >> 2) |
+         ((buf[0] & 0x04) >> 1) | ((buf[3] & 0x04) >> 2));
 
-        hw->left = (buf[0] & 0x01) ? 1 : 0;
-        hw->right = (buf[0] & 0x02) ? 1 : 0;
+    hw->left = (buf[0] & 0x01) ? 1 : 0;
+    hw->right = (buf[0] & 0x02) ? 1 : 0;
 
-        if (SYN_CAP_EXTENDED(synhw)) {
-            /* if (SYN_CAP_MIDDLE_BUTTON(synhw)) { */
-            /*     hw->middle = ((buf[0] ^ buf[3]) & 0x01) ? 1 : 0; */
-            /* } */ 
+    /* if (SYN_CAP_MIDDLE_BUTTON(synhw)) { */
+    /*     hw->middle = ((buf[0] ^ buf[3]) & 0x01) ? 1 : 0; */
+    /* } */ 
 
-            /* Clickpad click */
-            hw->left = ((buf[0] ^ buf[3]) & 0x01) ? 1 : 0;
+    /* Clickpad click */
+    hw->left = ((buf[0] ^ buf[3]) & 0x01) ? 1 : 0;
 
-            /* Clickpad dragging */
-            if (sync_cumulative) {
-                hw->cumulative_dx = hw->x;
-                hw->cumulative_dy = hw->y;
-            } else {
-                hw->cumulative_dx = last_dx + hw->x;
-                hw->cumulative_dy = last_dy + hw->y;
-            }
-
-            if (SYN_CAP_FOUR_BUTTON(synhw)) {
-                hw->up = ((buf[3] & 0x01)) ? 1 : 0;
-                if (hw->left)
-                    hw->up = !hw->up;
-                hw->down = ((buf[3] & 0x02)) ? 1 : 0;
-                if (hw->right)
-                    hw->down = !hw->down;
-            }
-            if (SYN_CAP_MULTI_BUTTON_NO(synhw)) {
-                if ((buf[3] & 2) ? !hw->right : hw->right) {
-                    switch (SYN_CAP_MULTI_BUTTON_NO(synhw) & ~0x01) {
-                    default:
-                        break;
-                    case 8:
-                        hw->multi[7] = ((buf[5] & 0x08)) ? 1 : 0;
-                        hw->multi[6] = ((buf[4] & 0x08)) ? 1 : 0;
-                        /* fallthrough */
-                    case 6:
-                        hw->multi[5] = ((buf[5] & 0x04)) ? 1 : 0;
-                        hw->multi[4] = ((buf[4] & 0x04)) ? 1 : 0;
-                        /* fallthrough */
-                    case 4:
-                        hw->multi[3] = ((buf[5] & 0x02)) ? 1 : 0;
-                        hw->multi[2] = ((buf[4] & 0x02)) ? 1 : 0;
-                        /* fallthrough */
-                    case 2:
-                        hw->multi[1] = ((buf[5] & 0x01)) ? 1 : 0;
-                        hw->multi[0] = ((buf[4] & 0x01)) ? 1 : 0;
-                    }
-                }
-            }
-        }
-    }
-    else {                      /* old proto... */
-        PS2DBG("using old protocol\n");
-        hw->x = (((buf[1] & 0x1F) << 8) | buf[2]);
-        hw->y = (((buf[4] & 0x1F) << 8) | buf[5]);
-        hw->y = YMAX_NOMINAL + YMIN_NOMINAL - hw->y;
-
-        hw->z = (((buf[0] & 0x30) << 2) | (buf[3] & 0x3F));
-        w = (((buf[1] & 0x80) >> 4) | ((buf[0] & 0x04) >> 1));
-
-        hw->left = (buf[0] & 0x01) ? 1 : 0;
-        hw->right = (buf[0] & 0x02) ? 1 : 0;
+    /* Clickpad dragging */
+    if (sync_cumulative) {
+        hw->cumulative_dx = hw->x;
+        hw->cumulative_dy = hw->y;
+    } else {
+        hw->cumulative_dx = last_dx + hw->x;
+        hw->cumulative_dy = last_dy + hw->y;
     }
 
     if (hw->z >= para->finger_high) {
@@ -763,16 +714,14 @@ PS2ReadHwStateProto(InputInfoPtr pInfo,
          * If not, set it to 5, which corresponds to a finger of
          * normal width.
          */
-        if (SYN_CAP_EXTENDED(synhw)) {
-            if ((w >= 0) && (w <= 1)) {
-                w_ok = SYN_CAP_MULTIFINGER(synhw);
-            }
-            else if (w == 2) {
-                w_ok = SYN_MODEL_PEN(synhw);
-            }
-            else if ((w >= 4) && (w <= 15)) {
-                w_ok = SYN_CAP_PALMDETECT(synhw);
-            }
+        if ((w >= 0) && (w <= 1)) {
+            w_ok = SYN_CAP_MULTIFINGER(synhw);
+        }
+        else if (w == 2) {
+            w_ok = SYN_MODEL_PEN(synhw);
+        }
+        else if ((w >= 4) && (w <= 15)) {
+            w_ok = SYN_CAP_PALMDETECT(synhw);
         }
         if (!w_ok)
             w = 5;
