@@ -616,6 +616,8 @@ ps2_synaptics_get_packet(InputInfoPtr pInfo, struct PS2SynapticsHwInfo *synhw,
     return FALSE;
 }
 
+int last_dx, last_dy;
+
 Bool
 PS2ReadHwStateProto(InputInfoPtr pInfo,
                     struct SynapticsProtocolOperations *proto_ops,
@@ -628,6 +630,7 @@ PS2ReadHwStateProto(InputInfoPtr pInfo,
     struct PS2SynapticsHwInfo *synhw;
     int newabs;
     int w, i;
+    Bool sync_cumulative = FALSE;
 
     synhw = (struct PS2SynapticsHwInfo *) priv->proto_data;
     if (!synhw) {
@@ -637,6 +640,16 @@ PS2ReadHwStateProto(InputInfoPtr pInfo,
     }
 
     newabs = SYN_MODEL_NEWABS(synhw);
+
+    /* Reset cumulative values if buttons were not previously pressed and no
+     * two-finger scrolling is ongoing, or no finger was previously present. */
+    if (((!hw->left && !hw->right && !hw->middle) &&
+        !(priv->vert_scroll_twofinger_on || priv->vert_scroll_twofinger_on)) ||
+        hw->z < para->finger_low) {
+        hw->cumulative_dx = last_dx = hw->x;
+        hw->cumulative_dy = last_dy = hw->y;
+        sync_cumulative = TRUE;
+    }
 
     if (!ps2_synaptics_get_packet(pInfo, synhw, proto_ops, comm))
         return FALSE;
@@ -670,6 +683,7 @@ PS2ReadHwStateProto(InputInfoPtr pInfo,
         PS2DBG("using new protocols\n");
         hw->x = (((buf[3] & 0x10) << 8) | ((buf[1] & 0x0f) << 8) | buf[4]);
         hw->y = (((buf[3] & 0x20) << 7) | ((buf[1] & 0xf0) << 4) | buf[5]);
+        hw->y = YMAX_NOMINAL + YMIN_NOMINAL - hw->y;
 
         hw->z = buf[2];
         w = (((buf[0] & 0x30) >> 2) |
@@ -679,9 +693,22 @@ PS2ReadHwStateProto(InputInfoPtr pInfo,
         hw->right = (buf[0] & 0x02) ? 1 : 0;
 
         if (SYN_CAP_EXTENDED(synhw)) {
-            if (SYN_CAP_MIDDLE_BUTTON(synhw)) {
-                hw->middle = ((buf[0] ^ buf[3]) & 0x01) ? 1 : 0;
+            /* if (SYN_CAP_MIDDLE_BUTTON(synhw)) { */
+            /*     hw->middle = ((buf[0] ^ buf[3]) & 0x01) ? 1 : 0; */
+            /* } */ 
+
+            /* Clickpad click */
+            hw->left = ((buf[0] ^ buf[3]) & 0x01) ? 1 : 0;
+
+            /* Clickpad dragging */
+            if (sync_cumulative) {
+                hw->cumulative_dx = hw->x;
+                hw->cumulative_dy = hw->y;
+            } else {
+                hw->cumulative_dx = last_dx + hw->x;
+                hw->cumulative_dy = last_dy + hw->y;
             }
+
             if (SYN_CAP_FOUR_BUTTON(synhw)) {
                 hw->up = ((buf[3] & 0x01)) ? 1 : 0;
                 if (hw->left)
@@ -719,6 +746,7 @@ PS2ReadHwStateProto(InputInfoPtr pInfo,
         PS2DBG("using old protocol\n");
         hw->x = (((buf[1] & 0x1F) << 8) | buf[2]);
         hw->y = (((buf[4] & 0x1F) << 8) | buf[5]);
+        hw->y = YMAX_NOMINAL + YMIN_NOMINAL - hw->y;
 
         hw->z = (((buf[0] & 0x30) << 2) | (buf[3] & 0x3F));
         w = (((buf[1] & 0x80) >> 4) | ((buf[0] & 0x04) >> 1));
@@ -726,8 +754,6 @@ PS2ReadHwStateProto(InputInfoPtr pInfo,
         hw->left = (buf[0] & 0x01) ? 1 : 0;
         hw->right = (buf[0] & 0x02) ? 1 : 0;
     }
-
-    hw->y = YMAX_NOMINAL + YMIN_NOMINAL - hw->y;
 
     if (hw->z >= para->finger_high) {
         int w_ok = 0;
