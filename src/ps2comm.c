@@ -616,7 +616,7 @@ ps2_synaptics_get_packet(InputInfoPtr pInfo, struct PS2SynapticsHwInfo *synhw,
     return FALSE;
 }
 
-int last_dx, last_dy;
+int last_dx, last_dy, last_left, last_right;
 
 Bool
 PS2ReadHwStateProto(InputInfoPtr pInfo,
@@ -671,6 +671,8 @@ PS2ReadHwStateProto(InputInfoPtr pInfo,
             hw->guest_left  = (buf[1] & 0x01) ? TRUE : FALSE;
             hw->guest_mid   = (buf[1] & 0x04) ? TRUE : FALSE;
             hw->guest_right = (buf[1] & 0x02) ? TRUE : FALSE;
+            hw->left = last_left;
+            hw->right = last_right;
             goto ret;
         }
     }
@@ -687,15 +689,12 @@ PS2ReadHwStateProto(InputInfoPtr pInfo,
     w = (((buf[0] & 0x30) >> 2) |
          ((buf[0] & 0x04) >> 1) | ((buf[3] & 0x04) >> 2));
 
-    hw->left = (buf[0] & 0x01) ? 1 : 0;
-    hw->right = (buf[0] & 0x02) ? 1 : 0;
+    hw->left = last_left = (buf[0] & 0x01) ? 1 : (((buf[0] ^ buf[3]) & 0x01) ? 1 : 0);
+    hw->right = last_right = (buf[0] & 0x02) ? 1 : 0;
 
     /* if (SYN_CAP_MIDDLE_BUTTON(synhw)) { */
     /*     hw->middle = ((buf[0] ^ buf[3]) & 0x01) ? 1 : 0; */
     /* } */ 
-
-    /* Clickpad click */
-    hw->left = ((buf[0] ^ buf[3]) & 0x01) ? 1 : 0;
 
     /* Clickpad dragging */
     if (sync_cumulative) {
